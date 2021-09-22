@@ -1,0 +1,5 @@
+ignored:
+  - "DL3026"
+
+trustedRegistries:
+  - docker.pkg.github.com

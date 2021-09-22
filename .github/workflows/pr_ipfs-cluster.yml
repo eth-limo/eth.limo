@@ -1,0 +1,27 @@
+name: IPFS Cluster Pre-Flight Checks
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile.ipfs-cluster'
+jobs:
+  push_to_registry:
+    name: Security analysis for IPFS Cluster image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v2
+      - name: Build image
+        id: build_image
+        run: docker build --rm -f Dockerfile.ipfs-cluster -t ipfs-cluster:${{ github.sha }} .
+      - name: hadolint
+        id: hadolint
+        uses: hadolint/hadolint-action@v1.5.0
+        with:
+          dockerfile: ./Dockerfile.ipfs-cluster
+          failure-threshold: warning
+          ignore: DL3026
+      - name: Container scan
+        id: container_scan
+        uses: Azure/container-scan@v0
+        with:
+          image-name: ipfs-cluster:${{ github.sha }}

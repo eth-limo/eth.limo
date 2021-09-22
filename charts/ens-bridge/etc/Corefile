@@ -1,0 +1,62 @@
+# Answer all .eth queries from ipfs-go
+https://eth:8443 {
+
+    tls /etc/ssl/certs/tls.crt /etc/ssl/certs/tls.key /etc/ssl/certs/ca.crt
+
+    ens {
+        #connection http://{$GETH_NODE}
+        connection https://mainnet.infura.io/v3/a4c87aadd9334fa19f3e7908add9d102
+        ethlinknameservers 127.0.0.1
+        ipfsgatewaya {$IPFS_BACKEND}:80
+        }
+
+    log {
+        class all
+    }
+
+    cache 1800
+
+    errors
+}
+
+# Capture eth.link queries from ipfs-go
+eth.link:8853 {
+    rewrite stop {
+        name regex (.*)\.eth\.link {1}.eth
+        answer name (.*)\.eth {1}.eth.link
+    }
+
+    ens {
+        #connection http://{$GETH_NODE}
+        connection https://mainnet.infura.io/v3/a4c87aadd9334fa19f3e7908add9d102
+        ethlinknameservers 127.0.0.1
+        ipfsgatewaya {$IPFS_BACKEND}:80
+    }
+
+    log {
+        class all
+    }
+
+    cache 1800
+
+    errors
+}
+
+    # Answer all .eth queries
+eth:8853 {
+    ens {
+        #connection http://{$GETH_NODE}
+        connection https://mainnet.infura.io/v3/a4c87aadd9334fa19f3e7908add9d102
+        ethlinknameservers 127.0.0.1
+        ipfsgatewaya {$IPFS_BACKEND}:80
+    }
+
+    log {
+        class all
+    }
+
+    cache 1800
+
+    log
+    errors
+}

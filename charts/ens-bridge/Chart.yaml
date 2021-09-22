@@ -1,0 +1,14 @@
+apiVersion: v2
+name: eth_limo
+description: eth.limo - full IPFS/IPNS and ENS gateway stack
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: external-dns
+    version: 5.4.0
+    repository: https://charts.bitnami.com/bitnami
+  - name: cert-manager
+    version: v1.5.0
+    repository: https://charts.jetstack.io

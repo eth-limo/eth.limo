@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.coredns.name }}
+  labels:
+    app: {{ .Values.coredns.name }}
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.coredns.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.coredns.name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.coredns.name }}
+    spec:
+      {{- if not .Values.local }}
+      nodeSelector:
+        service: {{ .Values.coredns.name }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: service
+                  operator: In
+                  values:
+                  - {{ .Values.coredns.name }}
+        #podAntiAffinity:
+        #  requiredDuringSchedulingIgnoredDuringExecution:
+        #  - labelSelector:
+        #      matchExpressions:
+        #      - key: app
+        #        operator: In
+        #        values:
+        #        - {{ .Values.coredns.name }}
+        #    topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+      #automountServiceAccountToken: false
+      {{- if .Values.imagePullSecrets -}}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.coredns.name }}
+          image: "{{ .Values.coredns.image.repository }}:{{ .Values.coredns.image.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: {{ .Values.coredns.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.coredns.securityContext.runAsGroup }}
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+          resources:
+{{ toYaml .Values.coredns.resources | indent 12 }}
+          ports:
+{{ toYaml .Values.coredns.ports | indent 12 }}
+          command: ["./coredns", "-conf", "/etc/coredns/Corefile"]
+          env:
+            {{- if .Values.coredns.env -}}
+            {{- range .Values.coredns.env }}
+            - name: {{ .name }}
+              value: {{ .value }}
+            {{- end }}
+            {{- end }}
+          volumeMounts:
+            - name: corefile-volume
+              mountPath: /etc/coredns/Corefile
+              subPath: Corefile
+            - name: certificate-pair
+              mountPath: /etc/ssl/certs/ca.crt
+              subPath: ca.crt
+              readOnly: true
+            - name: certificate-pair
+              mountPath: /etc/ssl/certs/tls.crt
+              subPath: tls.crt
+              readOnly: true
+            - name: certificate-pair
+              mountPath: /etc/ssl/certs/tls.key
+              subPath: tls.key
+              readOnly: true
+{{- if .Values.coredns.livenessProbe }}
+          livenessProbe:
+{{ toYaml .Values.coredns.livenessProbe | indent 12 -}}
+{{ end }}
+      volumes:
+        - name: corefile-volume
+          configMap:
+            name: corefile
+        - name: certificate-pair
+          secret:
+            secretName: "{{ .Values.coredns.name }}-certificate"
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: corefile
+  namespace: {{ .Values.namespace }}
+data:
+  Corefile: |
+{{ .Files.Get "etc/Corefile" | indent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.coredns.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: {{ .Values.coredns.name }}
+  ports:
+    {{- range .Values.coredns.service.ports }}
+    - name: {{ .name }}
+      protocol: {{ .protocol }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+    {{- end }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.coredns.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  secretName: "{{ .Values.coredns.name }}-certificate"
+  dnsNames:
+    - "{{ .Values.coredns.name }}.{{ .Values.namespace }}.svc.cluster.local"
+  issuerRef:
+    name: selfsigned-issuer

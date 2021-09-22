@@ -1,0 +1,33 @@
+name: Kubernetes Security Scans
+
+on:
+  pull_request:
+    paths:
+      - 'charts/ens-bridge/templates/*.yml'
+      - 'charts/ens-bridge/templates/*.yaml'
+      - 'charts/ens-bridge/*.yml'
+      - 'charts/ens-bridge/*.yaml'
+jobs:
+  checkov:
+    runs-on: ubuntu-latest
+    name: Checkov
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@master
+      - name: Install Helm
+        id: install_helm
+        run: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+      - name: Render template
+        id: render_template
+        run: cd charts/ens-bridge && mkdir -p rendered && helm template -f values.yaml . > rendered/chart.yaml
+      - name: Run Checkov scan
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: charts/ens-bridge/rendered
+          quiet: false
+          soft_fail: true
+          framework: kubernetes
+          output_format: cli
+          download_external_modules: true
+          log_level: WARN

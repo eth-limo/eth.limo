@@ -1,0 +1,31 @@
+FROM golang:1.15 as builder
+
+ARG IPFS_VERSION=v0.9.1
+
+ENV CGO_ENABLED=0 GOOS=linux
+
+RUN git clone --depth 1 -b ${IPFS_VERSION} https://github.com/ipfs/go-ipfs.git
+
+WORKDIR /go/go-ipfs
+
+RUN make build && \
+    useradd -u 10003 ipfs && \
+    tail -n 1 /etc/passwd > /etc/passwd.scratch
+
+# runtime image
+FROM scratch as runtime
+
+LABEL org.opencontainers.image.source https://github.com/eth-limo/eth.limo
+
+WORKDIR /srv
+
+COPY --from=builder /etc/ssl /etc/ssl
+COPY --from=builder /etc/passwd.scratch /etc/passwd
+COPY --from=builder /go/go-ipfs/cmd/ipfs/ipfs .
+
+USER 10003
+
+ENV PATH=/srv:${PATH}
+
+CMD ["ipfs", "daemon", "--migrate=true", "--enable-pubsub-experiment", "--enable-namesys-pubsub"]
+

@@ -1,0 +1,389 @@
+###
+## General settings
+###
+
+# Is this a local development environment?
+#local: true
+#localEthereumIp: 192.168.1.7
+#localEthereumPort: 8845
+local: false
+
+
+namespace: ens-bridge
+imagePullPolicy: IfNotPresent
+imagePullSecrets: 
+  - name: "dockerconfigjson-github-com"
+
+###
+## Caddy reverse proxy
+###
+
+caddy:
+  name: caddy
+  #replicaCount: 1
+  replicaCount: 2
+  init:
+    image:
+      repository: alpine
+      tag: "3.14.1"
+  image:
+    repository: ghcr.io/eth-limo/eth.limo/caddy
+    tag: "v2.4.3-static-5"
+  securityContext:
+    runAsUser: 10001
+    runAsGroup: 10001
+  resources:
+    #requests:
+    #  memory: "128Mi"
+    #  cpu: "100m"
+    #limits:
+      #memory: "256Mi"
+      #cpu: "100m"      
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "900Mi"
+      cpu: "850m"
+  ports:
+    - containerPort: 8080
+      name: http
+      protocol: "TCP"
+    - containerPort: 8443
+      name: https
+      protocol: "TCP"
+    #- containerPort: 53
+    #  name: dns-tcp
+    #  protocol: "TCP"
+    #- containerPort: 53
+    #  name: dns-udp
+    #  protocol: "UDP"
+    #- containerPort: 853
+    #  name: dns-over-tls
+    #  protocol: "TCP"
+  service:
+    nodePorts:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 8080
+        nodePort: 30080
+      - name: https
+        protocol: TCP
+        port: 443
+        targetPort: 8443
+        nodePort: 30443
+      #- name: dns-tcp
+      #  protocol: TCP
+      #  port: 53
+      #  targetPort: 53
+      #  nodePort: 30053
+      #- name: dns-udp
+      #  protocol: UDP
+      #  port: 53
+      #  targetPort: 53
+      #  nodePort: 30053
+      #- name: dns-over-tls
+      #  protocol: TCP
+      #  port: 853
+      #  targetPort: 853
+      #  nodePort: 30853
+  #livenessProbe:
+  #  httpGet:
+  #    scheme: HTTPS
+  #    path: /health
+  #    port: 443
+  #  initialDelaySeconds: 30
+  #  periodSeconds: 10
+  #readinessProbe:
+  #  httpGet:
+  #    scheme: HTTPS
+  #    path: /health
+  #    port: 443
+  #  initialDelaySeconds: 30
+  #  periodSeconds: 10
+  livenessProbe:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    periodSeconds: 15
+  readinessProbe:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    periodSeconds: 15
+  acme:
+    email: ethdotlimo+letsencrypt.org@protonmail.com
+    ca: https://acme-v02.api.letsencrypt.org/directory
+
+###
+## Redis for Caddy
+###
+
+redis:
+  name: redis
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: "6.2.5"
+  securityContext:
+    runAsUser: 10006
+    runAsGroup: 10006
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "100m"
+    limits:
+      memory: "32Mi"
+      cpu: "100m"
+  ports:
+    - containerPort: 6379
+      name: redis
+      protocol: "TCP"
+  service:
+    ports:
+      - name: redis
+        protocol: TCP
+        port: 6379
+        targetPort: 6379
+
+###
+## IPFS gateway cluster
+###
+
+ipfs:
+  name: ipfs-cluster
+  replicaCount: 1
+  gateway:
+    name: ipfs-gateway
+    image:
+      repository: ghcr.io/eth-limo/eth.limo/ipfs-go
+      tag: v0.9.1
+    init: 
+      image:
+        repository: ipfs/go-ipfs
+        tag: v0.9.0
+    securityContext:
+      runAsUser: 10003
+      runAsGroup: 10003
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "2000m"
+      limits:
+        memory: "4.5Gi"
+        cpu: "3000m"
+      #requests:
+      #  memory: "128Mi"
+      #  cpu: "128m"
+      #limits:
+      #  memory: "256Mi"
+      #  cpu: "256m"
+    storageConfig:
+      storage: "30Gi"
+      storageClassName: do-block-storage
+    ports:
+      - containerPort: 8080
+        name: http
+        protocol: TCP
+      - containerPort: 8081
+        name: ws
+        protocol: TCP
+      - containerPort: 4001
+        name: swarm
+        protocol: TCP
+      - containerPort: 4001
+        name: swarm-udp
+        protocol: UDP
+      - containerPort: 5001
+        name: api
+        protocol: TCP
+    env:
+      - name: IPFS_PROFILE
+        value: "server"
+      - name: IPFS_LOGGING
+        value: "WARNING"
+      - name: IPFS_FD_MAX
+        value: "\"4096\""
+    livenessProbe:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 30
+      timeoutSeconds: 15
+      periodSeconds: 120
+    readinessProbe:
+      tcpSocket:
+        port: swarm
+      initialDelaySeconds: 30
+      timeoutSeconds: 15
+      periodSeconds: 60
+  cluster:
+    name: ipfs-cluster
+    image:
+      repository: ghcr.io/eth-limo/eth.limo/ipfs-cluster
+      tag: v0.13.3
+    init:  
+      image:
+        repository: ipfs/ipfs-cluster
+        tag: "latest"
+    securityContext:
+      runAsUser: 10004
+      runAsGroup: 10004
+    resources:
+      #requests:
+      #  memory: "128Mi"
+      #  cpu: "128m"
+      #limits:
+      #  memory: "256Mi"
+      #  cpu: "256m"
+      requests:
+        memory: "128Mi"
+        cpu: "150m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    storageConfig:
+      storage: "25Gi"
+      storageClassName: do-block-storage
+    ports:
+      - name: api-http
+        containerPort: 9094
+        protocol: TCP
+      - name: proxy-http
+        containerPort: 9095
+        protocol: TCP
+      - name: cluster-swarm
+        containerPort: 9096
+        protocol: TCP
+    livenessProbe:
+      tcpSocket:
+        port: cluster-swarm
+      initialDelaySeconds: 30
+      timeoutSeconds: 15
+      periodSeconds: 120
+    readinessProbe:
+      tcpSocket:
+        port: cluster-swarm
+      initialDelaySeconds: 30
+      timeoutSeconds: 15
+      periodSeconds: 120
+  service:
+    #clusterIP: 10.96.10.11
+    clusterIP: 10.245.10.11
+    ports:
+      - name: http
+        protocol: TCP
+        port: 80
+        targetPort: 8080
+
+# CoreDNS
+
+coredns:
+  name: coredns
+  #replicaCount: 1
+  replicaCount: 2
+  image:
+    repository: ghcr.io/eth-limo/eth.limo/coredns
+    tag: v1.8.5
+  securityContext:
+    runAsUser: 10002
+    runAsGroup: 10002
+  resources:
+    requests:
+      #memory: "128Mi"
+      #cpu: "128m"
+      memory: "128Mi"
+      cpu: "150m"
+    limits:
+      #memory: "256Mi"
+      #cpu: "256m"
+      memory: "512Mi"
+      cpu: "500m"
+  ports:
+    - containerPort: 8853
+      name: dns-tcp
+      protocol: TCP
+    - containerPort: 8853
+      name: dns-udp
+      protocol: UDP
+    - containerPort: 8443
+      name: https
+      protocol: TCP
+  env:
+    - name: GETH_NODE
+      value: geth
+    - name: IPFS_BACKEND
+      # We have to hardcode the ipfs svc ClusterIP here for the `ipfsgatewaya` setting
+      value: "10.244.10.11"
+  livenessProbe:
+    tcpSocket:
+      port: 8853
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 2
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    tcpSocket:
+      port: 8853
+    initialDelaySeconds: 15
+    periodSeconds: 5
+    timeoutSeconds: 2
+    successThreshold: 1
+    failureThreshold: 3
+  service:
+    ports:
+      - name: dns-tcp
+        protocol: TCP
+        targetPort: 8853
+        port: 53
+      - name: dns-udp
+        protocol: UDP
+        targetPort: 8853
+        port: 53
+      - name: https
+        protocol: TCP
+        targetPort: 8443
+        port: 443
+
+###
+## Go Ethereum
+###
+
+geth:
+  name: geth
+  replicaCount: 1
+  image:
+    repository: ghcr.io/eth-limo/eth.limo/go-ethereum
+    tag: v1.10.6
+  securityContext:
+    runAsUser: 10005
+    runAsGroup: 10005
+  resources:
+    requests:
+      memory: "8Gi"
+      cpu: "6000m"
+    limits:
+      memory: "13Gi"
+      cpu: "7000m"
+  storageConfig:
+    storage: "1000Gi"
+    storageClassName: do-block-storage
+  ports:
+    - containerPort: 8545
+      name: geth
+      protocol: TCP
+  livenessProbe:
+    tcpSocket:
+      port: geth
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    periodSeconds: 15
+  readinessProbe:
+    tcpSocket:
+      port: geth
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    periodSeconds: 15

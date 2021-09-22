@@ -1,0 +1,309 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.ipfs.name }}
+  labels:
+    app: {{ .Values.ipfs.name }}
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.ipfs.replicaCount }}
+  serviceName: {{ .Values.ipfs.name }}
+  selector:
+    matchLabels:
+      app: {{ .Values.ipfs.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.ipfs.name }}
+    spec:
+      #securityContext:
+      #  sysctls:
+      #    - name: net.core.rmem_max
+      #      value: "2500000"
+      {{- if not .Values.local }}
+      nodeSelector:
+        service: ipfs
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: service
+                  operator: In
+                  values:
+                  - ipfs
+        #podAntiAffinity:
+        #  requiredDuringSchedulingIgnoredDuringExecution:
+        #  - labelSelector:
+        #      matchExpressions:
+        #      - key: app
+        #        operator: In
+        #        values:
+        #        - ipfs
+        #    topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+      #automountServiceAccountToken: false
+      #shareProcessNamespace: true
+      {{- if .Values.imagePullSecrets -}}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      initContainers:
+      # ipfs-cluster init
+        - name: "configure-{{ .Values.ipfs.name }}-initial"
+          image: "{{ .Values.ipfs.cluster.init.image.repository }}:{{ .Values.ipfs.cluster.init.image.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: ["sh", "/custom/configure-ipfs-cluster.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            #capabilities:
+            #  add:
+            #    - CAP_CHOWN
+            #    - CAP_FOWNER
+            #    - CAP_DAC_OVERRIDE
+            #  drop:
+            #    - ALL
+          resources:
+{{ toYaml .Values.ipfs.cluster.resources | indent 12 }}
+          env:
+            - name: IPFS_CLUSTER_PATH
+              value: "/data/ipfs-cluster"
+            - name: IPFS_CLUSTER_CONSENSUS
+              value: "crdt"
+            - name: IPFS_CLUSTER_DATASTORE
+              value: leveldb
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: cluster-ipfs-storage
+              mountPath: /data/ipfs-cluster
+            - name: configure-script
+              mountPath: /custom
+              readOnly: true
+        - name: "configure-{{ .Values.ipfs.name }}"
+          image: "{{ .Values.ipfs.gateway.init.image.repository }}:{{ .Values.ipfs.gateway.init.image.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: ["sh", "/custom/configure-ipfs.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            #fsGroup: 0
+            #capabilities:
+            #  add:
+            #    - CAP_CHOWN
+            #    - CAP_FOWNER
+            #    - CAP_DAC_OVERRIDE
+            #  drop:
+            #    - ALL
+          resources:
+{{ toYaml .Values.ipfs.gateway.resources | indent 12 }}
+          env:
+            - name: IPFS_PATH
+              value: "/data/ipfs"
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: cluster-ipfs-storage
+              mountPath: /data/ipfs-cluster
+            - name: configure-script
+              mountPath: /custom
+              readOnly: true
+      containers:
+###
+## IPFS gateway
+###
+        - name: {{ .Values.ipfs.gateway.name }}
+          image: "{{ .Values.ipfs.gateway.image.repository }}:{{ .Values.ipfs.gateway.image.tag }}"
+          command: ["ipfs", "daemon", "--migrate=true", "--enable-pubsub-experiment", "--enable-namesys-pubsub"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: {{ .Values.ipfs.gateway.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.ipfs.gateway.securityContext.runAsGroup }}
+            #fsGroup: 10003
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+{{ toYaml .Values.ipfs.gateway.resources | indent 12 }}
+          ports:
+{{ toYaml .Values.ipfs.gateway.ports | indent 12 }}
+          volumeMounts:
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: ca-certificate
+              mountPath: /etc/ssl/certs/ca.crt
+              subPath: ca.crt
+              readOnly: true
+          env:
+            - name: IPFS_PATH
+              value: "/data/ipfs"
+            {{- if .Values.ipfs.gateway.env -}}
+            {{- range .Values.ipfs.gateway.env }}
+            - name: {{ .name }}
+              value: {{ .value }}
+            {{- end }}
+            {{- end }}
+{{- if .Values.ipfs.gateway.livenessProbe }}
+          livenessProbe:
+{{ toYaml .Values.ipfs.gateway.livenessProbe | indent 12 -}}
+{{ end }}
+{{- if .Values.ipfs.gateway.readinessProbe }}
+          readinessProbe:
+{{ toYaml .Values.ipfs.gateway.readinessProbe | indent 12 -}}
+{{ end }}
+{{- if .Values.ipfs.gateway.lifecycle }}
+          lifecycle:
+{{ toYaml .Values.ipfs.gateway.lifecycle | indent 12 -}}
+{{ end }}
+###
+## IPFS cluster followers
+###
+        - name: {{ .Values.ipfs.cluster.name }}
+          image: "{{ .Values.ipfs.cluster.image.repository }}:{{ .Values.ipfs.cluster.image.tag }}"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: {{ .Values.ipfs.cluster.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.ipfs.cluster.securityContext.runAsGroup }}
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            #fsGroup: 10004
+            capabilities:
+              drop:
+                - ALL
+          resources:
+{{ toYaml .Values.ipfs.cluster.resources | indent 12 }}
+          ports:
+{{ toYaml .Values.ipfs.cluster.ports | indent 12 }}
+          command: ["./ipfs-cluster-service", "daemon", "--upgrade", "--bootstrap", "$(BOOTSTRAP_ADDR)", "--leave"]
+          volumeMounts:
+            - name: cluster-ipfs-storage
+              mountPath: /data/ipfs-cluster
+            - name: ipfs-storage
+              mountPath: /data/ipfs
+            - name: configure-script
+              mountPath: /custom
+              readOnly: true
+            - name: ca-certificate
+              mountPath: /etc/ssl/certs/ca.crt
+              subPath: ca.crt
+              readOnly: true
+          env:
+            - name: "BOOTSTRAP_PEER_ID"
+              valueFrom:
+                configMapKeyRef:
+                  name: env-config
+                  key: bootstrap-peer-id
+            - name: "BOOTSTRAP_PEER_PRIV_KEY"
+              valueFrom:
+                secretKeyRef:
+                  name: secret-config
+                  key: bootstrap-peer-priv-key
+            - name: "CLUSTER_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: secret-config
+                  key: cluster-secret
+            - name: "BOOTSTRAP_ADDR"
+              value: "/dns4/{{ .Values.ipfs.name }}-leader-0.{{ .Values.ipfs.name }}.{{ .Values.namespace }}.svc.cluster.local/tcp/9096/ipfs/$(BOOTSTRAP_PEER_ID)"
+            - name: "CLUSTER_MONITOR_PING_INTERVAL"
+              value: "3m"
+            - name: "SVC_NAME"
+              value: "{{ .Values.ipfs.name }}.{{ .Values.namespace }}.svc.cluster.local"
+            - name: "IPFS_LOGGING"
+              value: "WARNING"
+            - name: IPFS_CLUSTER_PATH
+              value: "/data/ipfs-cluster"
+            - name: IPFS_CLUSTER_CONSENSUS
+              value: "crdt"
+            - name: IPFS_CLUSTER_DATASTORE
+              value: leveldb
+            {{- if .Values.ipfs.cluster.env -}}
+            {{- range .Values.ipfs.cluster.env }}
+            - name: {{ .name }}
+              value: {{ .value }}
+            {{- end }}
+            {{- end }}
+{{- if .Values.ipfs.cluster.livenessProbe }}
+          livenessProbe:
+{{ toYaml .Values.ipfs.cluster.livenessProbe | indent 12 -}}
+{{ end }}
+{{- if .Values.ipfs.cluster.readinessProbe }}
+          readinessProbe:
+{{ toYaml .Values.ipfs.cluster.readinessProbe | indent 12 -}}
+{{ end }}
+{{- if .Values.ipfs.cluster.lifecycle }}
+          lifecycle:
+{{ toYaml .Values.ipfs.cluster.lifecycle | indent 12 -}}
+{{ end }}
+      volumes:
+        - name: ca-certificate
+          secret:
+            secretName: coredns-certificate
+        - name: configure-script
+          configMap:
+            name: ipfs-cluster-set-bootstrap-conf
+  volumeClaimTemplates:
+    - metadata:
+        name: cluster-ipfs-storage
+      spec:
+        {{- if not .Values.local }}
+        storageClassName: {{ .Values.ipfs.cluster.storageConfig.storageClassName }}
+        {{ end }}
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            {{- if not .Values.local }}
+            storage: {{ .Values.ipfs.cluster.storageConfig.storage }}
+            {{ else }}
+            storage: 1Gi
+            {{ end }}
+    - metadata:
+        name: ipfs-storage
+      spec:
+        {{- if not .Values.local }}
+        storageClassName: {{ .Values.ipfs.gateway.storageConfig.storageClassName }}
+        {{ end }}
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            {{- if not .Values.local }}
+            storage: {{ .Values.ipfs.gateway.storageConfig.storage }}
+            {{ else }}
+            storage: 20Gi
+            {{ end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ipfs-cluster-set-bootstrap-conf
+  namespace: {{ .Values.namespace }}
+data: 
+  configure-ipfs-cluster.sh: |
+{{ tpl (.Files.Get "bin/configure-ipfs-cluster.sh" | indent 4) .}}
+  configure-ipfs.sh: |
+{{ tpl (.Files.Get "bin/configure-ipfs.sh" | indent 4) .}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.ipfs.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  # Hardcoded clusterIP for ipfs `ipfsgatewaya` setting
+  clusterIP: {{ .Values.ipfs.service.clusterIP }}
+  selector:
+    app: {{ .Values.ipfs.name }}
+  ports:
+    {{- range .Values.ipfs.service.ports }}
+    - name: {{ .name }}
+      protocol: {{ .protocol }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+    {{- end }}

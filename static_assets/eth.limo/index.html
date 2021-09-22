@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet" href="assets/css/style.css%3Fv=.css" />
+    <!--[if lt IE 9]>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <![endif]-->
+  </head>
+  <link rel="icon" type="image/svg+xml" href="/assets/favico.svg" />
+  <body>
+    <div class="wrapper">
+      <header>
+        <div class="headerlogo">
+          <img src="/assets/itsatie.svg" alt="limo-logo" width="200" />
+        </div>
+
+        <ul class="toc">
+          <li><a href="#what-is-ethlimo">What is ETH.LIMO?</a></li>
+          <li><a href="#why-limo">Why do we need ETH.LIMO?</a></li>
+          <li>
+            <a href="#how-limo-works">How does ETH.LIMO work?</a>
+          </li>
+          <li><a href="#security-privacy">Security and Privacy</a></li>
+
+          <li><a href="#further-reading">Further reading</a></li>
+        </ul>
+      </header>
+      <section>
+        <h1 id="last-mile">The last mile of DeFi</h1>
+
+        <h2 id="what-is-ethlimo">What is ETH.LIMO?</h2>
+
+        <p>
+          A decentralized alternative to Cloudflare’s often unreliable eth.link
+          service, LIMO functions as a drop-in replacement for eth.link; a Web
+          2.0 infrastructure stack for resolving Ethereum Name Service (ENS)
+          records and associated IPFS content (Web 3.0). LIMO allows users and
+          dApp developers to effortlessly access and host static sites built
+          with a combination of IPFS and ENS.
+        </p>
+        <p>
+          LIMO is intended to be operated as a reliable and secure public good
+          for all users. Once the LIMO project has completed Alpha testing it
+          will be released with an open source license and maintained as a
+          community project for the purposes of encouraging others to operate
+          their own decentralized ENS/IPFS gateways.
+        </p>
+
+        <h2 id="why-limo">Why do we need ETH.LIMO?</h2>
+
+        <p>
+          Core internet infrastructure is becoming increasingly centralized and
+          as such, several existential threats have emerged that undermine the
+          principles of an decentralized, open and free internet:
+        </p>
+        <ul>
+          <li>Single points of failure (Cloudflare, CDNs, etc)</li>
+          <li>Eth.link is unreliable</li>
+          <li>
+            All ENS gateway infrastructure is currently operated by a single entity
+            (Cloudflare)
+          </li>
+          <li>Censorship</li>
+          <li>Lack of non-commercial infrastructure</li>
+          <li>
+            Opacity of terms of service agreements and moderation policies
+          </li>
+          <li>
+            Proliferation of proprietary browser extensions which require
+            centralized services (Unstoppable domains, etc…)
+          </li>
+          <li>The erosion of the “commons” and “public space”</li>
+          <li>Web 3.0 adoption is still nascent</li>
+          <li>Most browsers cannot natively access ENS/IPFS</li>
+        </ul>
+
+        <p>
+          For end users, this means a limited selection of poor quality services
+          that increasingly resemble a cable TV package. Accessing the dWeb can
+          be a frustrating experience if eth.link is unavailable.
+        </p>
+        <p>
+          For dApp developers, this leads to a limited selection of platforms
+          and services in addition to lost revenue. As an alternative to
+          eth.link for users and dApp developers, any existing eth.link site can
+          be accessed with eth.limo in the same manner.
+        </p>
+        <p>
+          The LIMO project brings additional resiliency to dApps by providing an
+          alternative means of access as a public good. Application owners can
+          directly participate in the governance of LIMO, thus giving key
+          stakeholders voting privileges for the services they depend upon. As
+          the decentralized web continues to grow, it is imperative that
+          community projects facilitate the transition from Web 2.0 to Web 3.0.
+        </p>
+
+        <h2 id="how-limo-works">How does ETH.LIMO work?</h2>
+
+        <p>LIMO operates as a reverse proxy for ENS names and IPFS content.</p>
+
+        <p>
+          Much like eth.link, LIMO uses a wildcard DNS record *.eth.limo to
+          dynamically capture requests for all ENS domains. LIMO operates its
+          own set of Ethereum nodes in order to reduce the dependency upon
+          services like Infura for tasks such as performing the resolution of an
+          ENS record. The LIMO service automatically resolves the IPFS content
+          hash of the requested ENS record and returns the corresponding static
+          content over HTTPS. Since native IPFS resolution capabilities are
+          missing from the majority of browsers, ETH.LIMO represents a bridge
+          from the “normal” internet to the decentralized one.
+        </p>
+        <p>
+          Zero-configuration is required in order to access or host a site or
+          dApp on ETH.LIMO, making ETH.LIMO an excellent no-cost solution for
+          providing Web 2.0 access to your project.
+        </p>
+
+        <h2 id="security-privacy">Security and Privacy</h2>
+
+        <p>
+          The LIMO project enforces strong origin isolation policies for all
+          resources by default. Projects accessed through ETH.LIMO automatically
+          receive security hardened browser headers and all client data is
+          encrypted with TLSv1.3 (default) or TLSv1.2 using the latest
+          ciphersuites. All log data is fully anonymized, which prevents the
+          ability to uniquely identify any single user.
+        </p>
+
+        <h2 id="further-reading">Further reading</h2>
+
+        <p>
+          <a href="https://medium.com/@ethdotlimo/what-is-eth-limo-faf18dcaa36d"
+            >The last mile of DeFi</a
+          >
+        </p>
+
+        <p>
+          <a href="http://www.twitter.com/eth_limo">Twitter</a>
+        </p>
+
+        <p>
+          <a href="mailto:ethdotlimo@protonmail.com">Email Us</a>
+        </p>
+      </section>
+
+      <footer></footer>
+    </div>
+    <script src="/assets/js/scale.fix.js"></script>
+  </body>
+</html>

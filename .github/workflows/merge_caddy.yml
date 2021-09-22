@@ -1,0 +1,35 @@
+name: Caddy Pipeline
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'Dockerfile.caddy'
+jobs:
+  push_to_registry:
+    name: Build and publish Caddy
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v2
+      - name: Log in to GitHub Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set the Caddy version
+        id: caddy_version
+        run: echo CADDY_VERSION=$(cat Dockerfile.caddy | grep 'ARG CADDY_VERSION' | cut -d'=' -f2) >> $GITHUB_ENV
+      - name: Build and publish container image
+        uses: docker/build-push-action@v2
+        with:
+          file: ./Dockerfile.caddy
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/caddy:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/caddy:${{ env.CADDY_VERSION }}

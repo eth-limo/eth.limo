@@ -1,0 +1,119 @@
+{{- if not .Values.local -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.geth.name }}
+  labels:
+    app: {{ .Values.geth.name }}
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.geth.replicaCount }}
+  serviceName: {{ .Values.geth.name }}
+  selector:
+    matchLabels:
+      app: {{ .Values.geth.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.geth.name }}
+    spec:
+      {{- if not .Values.local }}
+      nodeSelector:
+        service: {{ .Values.geth.name }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: service
+                  operator: In
+                  values:
+                  - {{ .Values.geth.name }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ .Values.geth.name }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+      #automountServiceAccountToken: false
+      #shareProcessNamespace: true
+      {{- if .Values.imagePullSecrets -}}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.geth.name }}
+          image: "{{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: {{ .Values.geth.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.geth.securityContext.runAsGroup }}
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+{{ toYaml .Values.geth.resources | indent 12 }}
+          ports:
+{{ toYaml .Values.geth.ports | indent 12 }}
+          volumeMounts:
+            - name: chaindata
+              mountPath: /home/ethereum/.ethereum
+{{- if .Values.geth.livenessProbe }}
+          livenessProbe:
+{{ toYaml .Values.geth.livenessProbe | indent 12 -}}
+{{ end }}
+{{- if .Values.geth.readinessProbe }}
+          readinessProbe:
+{{ toYaml .Values.geth.readinessProbe | indent 12 -}}
+{{ end }}
+{{- if .Values.geth.lifecycle }}
+          lifecycle:
+{{ toYaml .Values.geth.lifecycle | indent 12 -}}
+{{ end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: chaindata
+      spec:
+        storageClassName: {{ .Values.geth.storageConfig.storageClassName }}
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.geth.storageConfig.storage }}
+{{ end }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Values.geth.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  ports:
+    - name: {{ .Values.geth.name }}
+      protocol: TCP
+      port: 80
+      targetPort: 8545
+
+{{- if .Values.local }}
+---
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: {{ .Values.geth.name }}
+  namespace: {{ .Values.namespace }}
+subsets:
+  - addresses:
+      - ip: {{ .Values.localEthereumIp }}
+    ports:
+      - name: geth
+        port: {{ .Values.localEthereumPort }}
+{{ end }}

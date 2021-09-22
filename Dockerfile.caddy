@@ -1,0 +1,56 @@
+# Build stage
+FROM golang:1.16 as builder
+
+ARG CADDY_VERSION=v2.4.3
+
+ENV CGO_ENABLED=0 GOOS=linux
+
+COPY static_assets/eth.limo /var/www/public_html
+
+RUN go get github.com/caddyserver/xcaddy/cmd/xcaddy && \
+    xcaddy build ${CADDY_VERSION} \
+      --with github.com/mholt/caddy-ratelimit \
+      --with github.com/mastercactapus/caddy2-proxyprotocol \
+      --with github.com/ss098/certmagic-s3 \
+      --with github.com/abiosoft/caddy-json-parse \
+      --with github.com/sjtug/caddy2-filter \
+      --with github.com/mholt/caddy-l4 \
+      --with github.com/caddy-dns/digitalocean && \
+    useradd -u 10001 caddy && \
+    tail -n 1 /etc/passwd > /etc/passwd.scratch && \
+    mkdir -p \
+      /config \
+      /data \
+      /var/www/public_html && \
+    chown -R 10001:10001 \
+      /config \
+      /data \
+      /var/www/public_html && \
+    chmod -R 555 /var/www/public_html && \
+    echo 'hosts: files dns' > /etc/nsswitch.conf
+
+RUN ls -altR /var/www/public_html
+
+FROM scratch as runtime
+
+LABEL org.opencontainers.image.source https://github.com/eth-limo/eth.limo
+
+COPY --from=builder /etc/nsswitch.conf /etc/nsswitch.conf
+COPY --from=builder /etc/mime.types /etc/mime.types
+COPY --from=builder /etc/ssl /etc/ssl
+COPY --from=builder /etc/passwd.scratch /etc/passwd
+
+# Static assets
+COPY --from=builder /var/www/public_html /var/www/public_html
+
+WORKDIR /srv
+
+COPY --from=builder /go/caddy .
+
+USER 10001
+
+ENV XDG_DATA_HOME /data
+ENV HOME=/srv
+ENV PATH=/srv:${PATH}
+
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

@@ -1,0 +1,38 @@
+FROM golang:1.15 as builder
+
+ARG COREDNS_VERSION=v1.8.5
+ARG COREDNS_ENS_VERSION=34eb045
+ARG GO_ENS_VERSION=v3.5.1
+
+ENV CGO_ENABLED=0 GOOS=linux
+
+WORKDIR /build
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    unzip \
+    ed && \
+    git clone https://github.com/wealdtech/coredns-ens.git && \
+    cd coredns-ens && \
+    git checkout "${COREDNS_ENS_VERSION}" && \
+    sed -i "s/github.com\/wealdtech\/go-ens\/v3 v3.5.0/github.com\/wealdtech\/go-ens\/v3 ${GO_ENS_VERSION}/g" go.mod && \
+    sed -i 's/CGO_ENABLED=1/CGO_ENABLED=0/g' build-standalone.sh && \
+    ./build-standalone.sh && \
+    useradd -u 10002 coredns && \
+    tail -n 1 /etc/passwd > /etc/passwd.scratch
+
+FROM scratch as runtime
+
+LABEL org.opencontainers.image.source https://github.com/eth-limo/eth.limo
+
+WORKDIR /srv
+
+COPY --from=builder /etc/ssl /etc/ssl
+COPY --from=builder /etc/passwd.scratch /etc/passwd
+COPY --from=builder /build/coredns-ens/coredns .
+
+USER 10002
+
+ENV PATH=/srv:${PATH}
+
+CMD ["coredns"]

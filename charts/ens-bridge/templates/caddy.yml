@@ -1,0 +1,220 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.caddy.name }}
+  labels:
+    app: {{ .Values.caddy.name }}
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: "runtime/default"
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.caddy.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.caddy.name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.caddy.name }}
+    spec:
+      {{- if not .Values.local }}
+      nodeSelector:
+        service: {{ .Values.caddy.name }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: service
+                  operator: In
+                  values:
+                  - {{ .Values.caddy.name }}
+        #podAntiAffinity:
+        #  requiredDuringSchedulingIgnoredDuringExecution:
+        #  - labelSelector:
+        #      matchExpressions:
+        #      - key: app
+        #        operator: In
+        #        values:
+        #        - {{ .Values.caddy.name }}
+        #    topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+      #automountServiceAccountToken: false
+      initContainers:
+        - name: "configure-caddy"
+          image: "{{ .Values.caddy.init.image.repository }}:{{ .Values.caddy.init.image.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: ["sh", "/custom/configure-caddyfile.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+{{ toYaml .Values.caddy.resources | indent 12 }}
+          env:
+            - name: "REDIS_HOST"
+              value: "{{ .Values.redis.name }}.{{ .Values.namespace }}.svc.cluster.local"
+            - name: "IPFS_BACKEND"
+              value: "{{ .Values.ipfs.name }}.{{ .Values.namespace }}.svc.cluster.local"
+            - name: "SPACES_ACCESS_KEY"
+              valueFrom:
+                secretKeyRef:
+                  name: digitalocean-secrets
+                  key: spaces-access-key
+            - name: "SPACES_SECRET_KEY"
+              valueFrom:
+                secretKeyRef:
+                  name: digitalocean-secrets
+                  key: spaces-secret-key
+            - name: "DO_TOKEN"
+              valueFrom:
+                secretKeyRef:
+                  name: digitalocean-secrets
+                  key: token
+          volumeMounts:
+            - name: caddyfile-volume
+              mountPath: "/etc/caddy-old/Caddyfile.json"
+              subPath: Caddyfile.json
+            - name: caddyfile-secrets-volume
+              mountPath: /etc/caddy
+            - name: configure-script
+              mountPath: /custom
+              readOnly: true
+            #- name: www
+            #  mountPath: /var/www
+      {{- if .Values.imagePullSecrets -}}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.caddy.name }}
+          image: "{{ .Values.caddy.image.repository }}:{{ .Values.caddy.image.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: {{ .Values.coredns.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.coredns.securityContext.runAsGroup }}
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+                - CAP_NET_ADMIN
+              drop:
+                - ALL
+          command: ["caddy"]
+          args: ["run", "--config", "/etc/caddy/Caddyfile.json"]
+          resources:
+{{ toYaml .Values.caddy.resources | indent 12 }}
+          ports:
+{{ toYaml .Values.caddy.ports | indent 12 }}
+          {{- if .Values.caddy.env  -}}
+          env:
+            {{- range .Values.caddy.env -}}
+            - name: {{ .name -}}
+              value: {{ .value -}}
+            {{- end -}}
+          {{- end }}
+          volumeMounts:
+            - name: caddyfile-secrets-volume
+              mountPath: "/etc/caddy/Caddyfile.json"
+              subPath: Caddyfile.json
+            #- name: www
+            #  mountPath: /var/www
+{{- if .Values.caddy.livenessProbe }}
+          livenessProbe:
+{{ toYaml .Values.caddy.livenessProbe | indent 12 -}}
+{{ end }}
+      volumes:
+        - name: caddyfile-volume
+          configMap:
+            name: caddyfile
+        - name: caddyfile-secrets-volume
+          emptyDir:
+            medium: "Memory"
+            sizeLimit: "1Mi"
+        - name: configure-script
+          configMap:
+            name: configure-caddyfile
+        #- name: www
+        #  persistentVolumeClaim:
+        #    claimName: www
+#---
+#apiVersion: v1
+#kind: PersistentVolumeClaim
+#metadata:
+#  name: www
+#  namespace: {{ .Values.namespace }}
+#spec:
+#  accessModes:
+#    - ReadWriteOnce
+#  resources:
+#    requests:
+#      storage: 1Gi
+#  {{- if not .Values.local }}
+#  storageClassName: do-block-storage
+#  {{ end }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: caddyfile
+  namespace: {{ .Values.namespace }}
+data:
+  Caddyfile.json: |
+{{ .Files.Get "etc/Caddyfile.json" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configure-caddyfile
+  namespace: {{ .Values.namespace }}
+data: 
+  configure-caddyfile.sh: |
+{{ tpl (.Files.Get "bin/configure-caddyfile.sh" | indent 4) .}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.caddy.name}}
+  namespace: {{ .Values.namespace }}
+  {{- if not .Values.local }}
+  annotations:
+    service.beta.kubernetes.io/do-loadbalancer-name: "wildcard.eth.limo"
+    service.beta.kubernetes.io/do-loadbalancer-protocol: "http2"
+    service.beta.kubernetes.io/do-loadbalancer-tls-passthrough: "true"
+    service.beta.kubernetes.io/do-loadbalancer-tls-ports: "443"
+    service.beta.kubernetes.io/do-loadbalancer-algorithm: "least_connection"
+    service.beta.kubernetes.io/do-loadbalancer-tag: {{ .Values.caddy.name}}
+    service.beta.kubernetes.io/do-loadbalancer-size-slug: "lb-small"
+    external-dns.alpha.kubernetes.io/hostname: "*.eth.limo"
+  {{- end }}
+spec:
+  {{- if .Values.local }}
+  type: NodePort
+  {{- else }}
+  type: LoadBalancer
+  {{- end }}
+  selector:
+    app: caddy
+  ports:
+{{- if .Values.local }}
+{{ toYaml .Values.caddy.service.nodePorts | indent 4 }}
+{{- else }}
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: 8443
+{{- end }}

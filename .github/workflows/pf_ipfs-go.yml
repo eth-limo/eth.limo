@@ -1,0 +1,27 @@
+name: Go IPFS Pre-Flight Checks
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile.ipfs-go'
+jobs:
+  push_to_registry:
+    name: Security analysis for Go IPFS image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v2
+      - name: Build image
+        id: build_image
+        run: docker build --rm -f Dockerfile.ipfs-go -t ipfs-go:${{ github.sha }} .
+      - name: hadolint
+        id: hadolint
+        uses: hadolint/hadolint-action@v1.5.0
+        with:
+          dockerfile: ./Dockerfile.ipfs-go
+          failure-threshold: warning
+          ignore: DL3026
+      - name: Container scan
+        id: container_scan
+        uses: Azure/container-scan@v0
+        with:
+          image-name: ipfs-go:${{ github.sha }}

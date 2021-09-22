@@ -1,0 +1,33 @@
+FROM golang:1.15 as builder
+
+ARG IPFS_CLUSTER_VERSION=v0.13.3
+
+ENV CGO_ENABLED=0 GOOS=linux
+
+RUN git clone --depth 1 -b ${IPFS_CLUSTER_VERSION} https://github.com/ipfs/ipfs-cluster.git
+
+WORKDIR /go/ipfs-cluster
+
+RUN go install ./cmd/ipfs-cluster-service && \
+    go install ./cmd/ipfs-cluster-ctl && \
+    go install ./cmd/ipfs-cluster-follow && \
+    useradd -u 10004 ipfs && \
+    tail -n 1 /etc/passwd > /etc/passwd.scratch
+
+FROM scratch as runtime
+
+LABEL org.opencontainers.image.source https://github.com/eth-limo/eth.limo
+
+WORKDIR /srv
+
+COPY --from=builder /etc/ssl /etc/ssl
+COPY --from=builder /etc/passwd.scratch /etc/passwd
+COPY --from=builder /go/bin/ipfs-cluster-ctl .
+COPY --from=builder /go/bin/ipfs-cluster-follow .
+COPY --from=builder /go/bin/ipfs-cluster-service .
+
+USER 10004
+
+ENV PATH=/srv:${PATH}
+
+CMD ["ipfs-cluster-service", "daemon", "--upgrade"]

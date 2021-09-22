@@ -1,0 +1,729 @@
+{
+    "admin": {
+        "disabled": true
+    },
+    "logging": {
+        "logs": {
+            "default": {
+                "exclude": [
+                    "http.log.access.log0"
+                ]
+            },
+            "log0": {
+                "writer": {
+                    "output": "stdout"
+                },
+                "encoder": {
+                    "format": "json"
+                },
+                "include": [
+                    "http.log.access.log0"
+                ]
+            }
+        }
+    },
+    "storage": {
+        "module": "s3",
+        "host": "nyc3.digitaloceanspaces.com",
+        "bucket": "eth-limo-certificates",
+        "access_key": "${SPACES_ACCESS_KEY}",
+        "secret_key": "${SPACES_SECRET_KEY}",
+        "prefix": "limo",
+        "redis_address": "${REDIS_HOST}:6379",
+        "redis_password": "",
+        "redis_db": 0
+    },
+    "apps": {
+        "tls": {
+            "certificates": {
+                "automate": [
+                    "*.eth.limo",
+                    "eth.limo"
+                ]
+            },
+            "automation": {
+                "policies": [
+                    {
+                        "subjects": [
+                            "*.eth.limo",
+                            "eth.limo"
+                        ],
+                        "issuers": [
+                            {
+                                "ca": "https://acme-v02.api.letsencrypt.org/directory",
+                                "challenges": {
+                                    "dns": {
+                                        "provider": {
+                                            "name": "digitalocean",
+                                            "auth_token": "${DO_TOKEN}"
+                                        },
+                                        "resolvers": ["208.67.222.222"],
+                                        "ttl": "300s",
+                                        "propagation_timeout": "900s"
+                                    }
+                                },
+                                "email": "ethdotlimo+letsencrypt.org@protonmail.com",
+                                "module": "acme"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "http": {
+            "http_port": 8080,
+            "servers": {
+                "srv0": {
+                    "listen": [
+                        ":8080"
+                    ],
+                    "routes": [
+                        {
+                            "handle": [
+                                {
+                                    "handler": "static_response",
+                                    "headers": {
+                                        "Location": [
+                                            "https://{http.request.host}{http.request.uri}"
+                                        ]
+                                    },
+                                    "status_code": 302
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "srv1": {
+                    "listen": [
+                        ":8443"
+                    ],
+                    "tls_connection_policies": [
+                        {
+                            "cipher_suites": [
+                                "TLS_AES_128_GCM_SHA256",
+                                "TLS_AES_256_GCM_SHA384",
+                                "TLS_CHACHA20_POLY1305_SHA256",
+                                "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+                                "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+                                "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+                                "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+                                "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+                            ],
+                            "curves": [
+                                "x25519",
+                                "secp256r1",
+                                "secp384r1",
+                                "secp521r1"
+                            ],
+                            "protocol_min": "tls1.2",
+                            "protocol_max": "tls1.3"
+                        }
+                    ],
+                    "routes": [
+                        {
+                            "match": [
+                                {
+                                    "host": [
+                                        "eth.limo"
+                                    ]
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "handler": "subroute",
+                                    "routes": [
+                                        {
+                                            "handle": [
+                                                {
+                                                    "handler": "vars",
+                                                    "root": "/var/www/public_html"
+                                                },
+                                                {
+                                                    "handler": "headers",
+                                                    "response": {
+                                                        "set": {
+                                                            "Access-Control-Allow-Credentials": [
+                                                                "false"
+                                                            ],
+                                                            "Access-Control-Allow-Origin": [
+                                                                "{http.request.host}"
+                                                            ],
+                                                            "Cache-Control": [
+                                                                "max-age=300, must-revalidate"
+                                                            ],
+                                                            "Cross-Origin-Resource-Policy": [
+                                                                "same-origin"
+                                                            ],
+                                                            "Permissions-Policy": [
+                                                                "camera=(), geolocation=(), microphone=(), payment=(), speaker=(), usb=(), battery=()"
+                                                            ],
+                                                            "Referrer-Policy": [
+                                                                "strict-origin-when-cross-origin"
+                                                            ],
+                                                            "Server": [
+                                                                "eth.limo"
+                                                            ],
+                                                            "X-Content-Type-Options": [
+                                                                "nosniff"
+                                                            ],
+                                                            "X-Frame-Options": [
+                                                                "SAMEORIGIN"
+                                                            ],
+                                                            "Content-Security-Policy": [
+                                                                "frame-ancestors 'self';"
+                                                            ],
+                                                            "X-Xss-Protection": [
+                                                                "1; mode=block"
+                                                            ],
+                                                            "Strict-Transport-Security": [
+                                                                "max-age=31536000;"
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "encodings": {
+                                                        "gzip": {}
+                                                    },
+                                                    "handler": "encode"
+                                                },
+                                                {
+                                                    "handler": "file_server",
+                                                    "hide": [
+                                                        "./Caddyfile.json"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "host": [
+                                        "*.eth.limo"
+                                    ]
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "encodings": {
+                                        "gzip": {}
+                                    },
+                                    "handler": "encode"
+                                },
+                                {
+                                    "handler": "headers",
+                                    "response": {
+                                        "set": {
+                                            "Access-Control-Allow-Credentials": [
+                                                "false"
+                                            ],
+                                            "Access-Control-Allow-Origin": [
+                                                "{http.request.host}"
+                                            ],
+                                            "Cache-Control": [
+                                                "max-age=300, must-revalidate"
+                                            ],
+                                            "Cross-Origin-Resource-Policy": [
+                                                "same-origin"
+                                            ],
+                                            "Permissions-Policy": [
+                                                "camera=(), geolocation=(), microphone=(), payment=(), speaker=(), usb=(), battery=()"
+                                            ],
+                                            "Referrer-Policy": [
+                                                "strict-origin-when-cross-origin"
+                                            ],
+                                            "Server": [
+                                                "eth.limo"
+                                            ],
+                                            "X-Content-Type-Options": [
+                                                "nosniff"
+                                            ],
+                                            "X-Frame-Options": [
+                                                "SAMEORIGIN"
+                                            ],
+                                            "Content-Security-Policy": [
+                                                "frame-ancestors 'self';"
+                                            ],
+                                            "X-Xss-Protection": [
+                                                "1; mode=block"
+                                            ],
+                                            "Strict-Transport-Security": [
+                                                "max-age=31536000;"
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "path": [
+                                        "/health"
+                                    ]
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "handler": "static_response",
+                                    "status_code": 200
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "path": [
+                                        "*.3g2",
+                                        "*.3gp",
+                                        "*.aaf",
+                                        "*.asf",
+                                        "*.avchd",
+                                        "*.avi",
+                                        "*.drc",
+                                        "*.flv",
+                                        "*.m2v",
+                                        "*.m3u8",
+                                        "*.m4p",
+                                        "*.m4v",
+                                        "*.mkv",
+                                        "*.mng",
+                                        "*.mov",
+                                        "*.mp2",
+                                        "*.mp4",
+                                        "*.mpe",
+                                        "*.mpeg",
+                                        "*.mpg",
+                                        "*.mpv",
+                                        "*.mxf",
+                                        "*.nsv",
+                                        "*.ogg",
+                                        "*.ogv",
+                                        "*.qt",
+                                        "*.rm",
+                                        "*.rmvb",
+                                        "*.roq",
+                                        "*.svi",
+                                        "*.vob",
+                                        "*.webm",
+                                        "*.wmv",
+                                        "*.yuv"
+                                    ]
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "body": "IPFS video streaming is forbidden",
+                                    "close": true,
+                                    "handler": "static_response",
+                                    "status_code": 403
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "path": [
+                                        "*.aac",
+                                        "*.aiff",
+                                        "*.ape",
+                                        "*.au",
+                                        "*.flac",
+                                        "*.gsm",
+                                        "*.it",
+                                        "*.m3u",
+                                        "*.m4a",
+                                        "*.mid",
+                                        "*.mod",
+                                        "*.mp3",
+                                        "*.mpa",
+                                        "*.ogg",
+                                        "*.pls",
+                                        "*.ra",
+                                        "*.s3m",
+                                        "*.sid",
+                                        "*.wav",
+                                        "*.wma",
+                                        "*.xm"
+                                    ]
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "body": "IPFS audio streaming is forbidden",
+                                    "close": true,
+                                    "handler": "static_response",
+                                    "status_code": 403
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "expression": "\n\t( \n\t{http.request.orig_uri.path.file}.endsWith(\".apng\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".png\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".avif\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".jpg\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".jpeg\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".jfif\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".pjpeg\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".pjp\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".gif\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".svg\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".webp\")\n\t) \u0026\u0026\n\t! {http.request.header.Referer}.contains(\".eth.limo\")\n\t\u0026\u0026\n\t{http.request.header.Referer} != \"\"\n\n\n\t"
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "body": "Hotlinking is forbidden",
+                                    "close": true,
+                                    "handler": "static_response",
+                                    "status_code": 403
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "header": {
+                                        "Content-Type": [
+                                            "video/1d-interleaved-parityfec",
+                                            "video/3gpp",
+                                            "video/3gpp2",
+                                            "video/3gpp-tt",
+                                            "video/AV1",
+                                            "video/BMPEG",
+                                            "video/BT656",
+                                            "video/CelB",
+                                            "video/DV",
+                                            "video/encaprtp",
+                                            "video/example",
+                                            "video/FFV1",
+                                            "video/flexfec",
+                                            "video/H261",
+                                            "video/H263",
+                                            "video/H263-1998",
+                                            "video/H263-2000",
+                                            "video/H264",
+                                            "video/H264-RCDO",
+                                            "video/H264-SVC",
+                                            "video/H265",
+                                            "video/iso.segment",
+                                            "video/JPEG",
+                                            "video/jpeg2000",
+                                            "video/mj2",
+                                            "video/MP1S",
+                                            "video/MP2P",
+                                            "video/MP2T",
+                                            "video/mp4",
+                                            "video/MP4V-ES",
+                                            "video/MPV",
+                                            "video/mpeg4-generic",
+                                            "video/nv",
+                                            "video/ogg",
+                                            "video/parityfec",
+                                            "video/pointer",
+                                            "video/quicktime",
+                                            "video/raptorfec",
+                                            "video/raw",
+                                            "video/rtp-enc-aescm128",
+                                            "video/rtploopback",
+                                            "video/rtx",
+                                            "video/scip",
+                                            "video/smpte291",
+                                            "video/SMPTE292M",
+                                            "video/ulpfec",
+                                            "video/vc1",
+                                            "video/vc2",
+                                            "video/vnd.CCTV",
+                                            "video/vnd.dece.hd",
+                                            "video/vnd.dece.mobile",
+                                            "video/vnd.dece.mp4",
+                                            "video/vnd.dece.pd",
+                                            "video/vnd.dece.sd",
+                                            "video/vnd.dece.video",
+                                            "video/vnd.directv.mpeg",
+                                            "video/vnd.directv.mpeg-tts",
+                                            "video/vnd.dlna.mpeg-tts",
+                                            "video/vnd.dvb.file",
+                                            "video/vnd.fvt",
+                                            "video/vnd.hns.video",
+                                            "video/vnd.iptvforum.1dparityfec-1010",
+                                            "video/vnd.iptvforum.1dparityfec-2005",
+                                            "video/vnd.iptvforum.2dparityfec-1010",
+                                            "video/vnd.iptvforum.2dparityfec-2005",
+                                            "video/vnd.iptvforum.ttsavc",
+                                            "video/vnd.iptvforum.ttsmpeg2",
+                                            "video/vnd.motorola.video",
+                                            "video/vnd.motorola.videop",
+                                            "video/vnd.mpegurl",
+                                            "video/vnd.ms-playready.media.pyv",
+                                            "video/vnd.nokia.interleaved-multimedia",
+                                            "video/vnd.nokia.mp4vr",
+                                            "video/vnd.nokia.videovoip",
+                                            "video/vnd.objectvideo",
+                                            "video/vnd.radgamettools.bink",
+                                            "video/vnd.radgamettools.smacker",
+                                            "video/vnd.sealed.mpeg1",
+                                            "video/vnd.sealed.mpeg4",
+                                            "video/vnd.sealed.swf",
+                                            "video/vnd.sealedmedia.softseal.mov",
+                                            "video/vnd.uvvu.mp4",
+                                            "video/vnd.youtube.yt",
+                                            "video/vnd.vivo",
+                                            "video/VP8",
+                                            "video/VP9",
+                                            "application/octet-stream"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "body": "IPFS video streaming is forbidden",
+                                    "close": true,
+                                    "handler": "static_response",
+                                    "status_code": 403
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "expression": " \n\t{http.response.header.Content-Type} == \"video/1d-interleaved-parityfec\" || \n\t{http.response.header.Content-Type} == \"video/3gpp\" || \n\t{http.response.header.Content-Type} == \"video/3gpp2\" || \n\t{http.response.header.Content-Type} == \"video/3gpp-tt\" || \n\t{http.response.header.Content-Type} == \"video/AV1\" || \n\t{http.response.header.Content-Type} == \"video/BMPEG\" || \n\t{http.response.header.Content-Type} == \"video/BT656\" || \n\t{http.response.header.Content-Type} == \"video/CelB\" || \n\t{http.response.header.Content-Type} == \"video/DV\" || \n\t{http.response.header.Content-Type} == \"video/encaprtp\" || \n\t{http.response.header.Content-Type} == \"video/example\" || \n\t{http.response.header.Content-Type} == \"video/FFV1\" || \n\t{http.response.header.Content-Type} == \"video/flexfec\" || \n\t{http.response.header.Content-Type} == \"video/H261\" || \n\t{http.response.header.Content-Type} == \"video/H263\" || \n\t{http.response.header.Content-Type} == \"video/H263-1998\" || \n\t{http.response.header.Content-Type} == \"video/H263-2000\" || \n\t{http.response.header.Content-Type} == \"video/H264\" || \n\t{http.response.header.Content-Type} == \"video/H264-RCDO\" || \n\t{http.response.header.Content-Type} == \"video/H264-SVC\" || \n\t{http.response.header.Content-Type} == \"video/H265\" || \n\t{http.response.header.Content-Type} == \"video/iso.segment\" || \n\t{http.response.header.Content-Type} == \"video/JPEG\" || \n\t{http.response.header.Content-Type} == \"video/jpeg2000\" || \n\t{http.response.header.Content-Type} == \"video/mj2\" || \n\t{http.response.header.Content-Type} == \"video/MP1S\" || \n\t{http.response.header.Content-Type} == \"video/MP2P\" || \n\t{http.response.header.Content-Type} == \"video/MP2T\" || \n\t{http.response.header.Content-Type} == \"video/mp4\" || \n\t{http.response.header.Content-Type} == \"video/MP4V-ES\" || \n\t{http.response.header.Content-Type} == \"video/MPV\" || \n\t{http.response.header.Content-Type} == \"video/mpeg4-generic\" || \n\t{http.response.header.Content-Type} == \"video/nv\" || \n\t{http.response.header.Content-Type} == \"video/ogg\" || \n\t{http.response.header.Content-Type} == \"video/parityfec\" || \n\t{http.response.header.Content-Type} == \"video/pointer\" || \n\t{http.response.header.Content-Type} == \"video/quicktime\" || \n\t{http.response.header.Content-Type} == \"video/raptorfec\" || \n\t{http.response.header.Content-Type} == \"video/raw\" || \n\t{http.response.header.Content-Type} == \"video/rtp-enc-aescm128\" || \n\t{http.response.header.Content-Type} == \"video/rtploopback\" || \n\t{http.response.header.Content-Type} == \"video/rtx\" || \n\t{http.response.header.Content-Type} == \"video/scip\" || \n\t{http.response.header.Content-Type} == \"video/smpte291\" || \n\t{http.response.header.Content-Type} == \"video/SMPTE292M\" || \n\t{http.response.header.Content-Type} == \"video/ulpfec\" || \n\t{http.response.header.Content-Type} == \"video/vc1\" || \n\t{http.response.header.Content-Type} == \"video/vc2\" || \n\t{http.response.header.Content-Type} == \"video/vnd.CCTV\" || \n\t{http.response.header.Content-Type} == \"video/vnd.dece.hd\" || \n\t{http.response.header.Content-Type} == \"video/vnd.dece.mobile\" || \n\t{http.response.header.Content-Type} == \"video/vnd.dece.mp4\" || \n\t{http.response.header.Content-Type} == \"video/vnd.dece.pd\" || \n\t{http.response.header.Content-Type} == \"video/vnd.dece.sd\" || \n\t{http.response.header.Content-Type} == \"video/vnd.dece.video\" || \n\t{http.response.header.Content-Type} == \"video/vnd.directv.mpeg\" || \n\t{http.response.header.Content-Type} == \"video/vnd.directv.mpeg-tts\" || \n\t{http.response.header.Content-Type} == \"video/vnd.dlna.mpeg-tts\" || \n\t{http.response.header.Content-Type} == \"video/vnd.dvb.file\" || \n\t{http.response.header.Content-Type} == \"video/vnd.fvt\" || \n\t{http.response.header.Content-Type} == \"video/vnd.hns.video\" || \n\t{http.response.header.Content-Type} == \"video/vnd.iptvforum.1dparityfec-1010\" || \n\t{http.response.header.Content-Type} == \"video/vnd.iptvforum.1dparityfec-2005\" || \n\t{http.response.header.Content-Type} == \"video/vnd.iptvforum.2dparityfec-1010\" || \n\t{http.response.header.Content-Type} == \"video/vnd.iptvforum.2dparityfec-2005\" || \n\t{http.response.header.Content-Type} == \"video/vnd.iptvforum.ttsavc\" || \n\t{http.response.header.Content-Type} == \"video/vnd.iptvforum.ttsmpeg2\" || \n\t{http.response.header.Content-Type} == \"video/vnd.motorola.video\" || \n\t{http.response.header.Content-Type} == \"video/vnd.motorola.videop\" || \n\t{http.response.header.Content-Type} == \"video/vnd.mpegurl\" || \n\t{http.response.header.Content-Type} == \"video/vnd.ms-playready.media.pyv\" || \n\t{http.response.header.Content-Type} == \"video/vnd.nokia.interleaved-multimedia\" || \n\t{http.response.header.Content-Type} == \"video/vnd.nokia.mp4vr\" || \n\t{http.response.header.Content-Type} == \"video/vnd.nokia.videovoip\" || \n\t{http.response.header.Content-Type} == \"video/vnd.objectvideo\" || \n\t{http.response.header.Content-Type} == \"video/vnd.radgamettools.bink\" || \n\t{http.response.header.Content-Type} == \"video/vnd.radgamettools.smacker\" || \n\t{http.response.header.Content-Type} == \"video/vnd.sealed.mpeg1\" || \n\t{http.response.header.Content-Type} == \"video/vnd.sealed.mpeg4\" || \n\t{http.response.header.Content-Type} == \"video/vnd.sealed.swf\" || \n\t{http.response.header.Content-Type} == \"video/vnd.sealedmedia.softseal.mov\" || \n\t{http.response.header.Content-Type} == \"video/vnd.uvvu.mp4\" || \n\t{http.response.header.Content-Type} == \"video/vnd.youtube.yt\" || \n\t{http.response.header.Content-Type} == \"video/vnd.vivo\" || \n\t{http.response.header.Content-Type} == \"video/VP8\" || \n\t{http.response.header.Content-Type} == \"video/VP9\" ||\n\t{http.response.header.Content-Type} == \"application/octet-stream\"\n\t"
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "body": "IPFS video streaming is forbidden",
+                                    "close": true,
+                                    "handler": "static_response",
+                                    "status_code": 403
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "header": {
+                                        "Content-Type": [
+                                            "audio/1d-interleaved-parityfec",
+                                            "audio/32kadpcm",
+                                            "audio/3gpp",
+                                            "audio/3gpp2",
+                                            "audio/aac",
+                                            "audio/ac3",
+                                            "audio/AMR",
+                                            "audio/AMR-WB",
+                                            "audio/amr-wb+",
+                                            "audio/aptx",
+                                            "audio/asc",
+                                            "audio/ATRAC-ADVANCED-LOSSLESS",
+                                            "audio/ATRAC-X",
+                                            "audio/ATRAC3",
+                                            "audio/basic",
+                                            "audio/BV16",
+                                            "audio/BV32",
+                                            "audio/clearmode",
+                                            "audio/CN",
+                                            "audio/DAT12",
+                                            "audio/dls",
+                                            "audio/dsr-es201108",
+                                            "audio/dsr-es202050",
+                                            "audio/dsr-es202211",
+                                            "audio/dsr-es202212",
+                                            "audio/DV",
+                                            "audio/DVI4",
+                                            "audio/eac3",
+                                            "audio/encaprtp",
+                                            "audio/EVRC",
+                                            "audio/EVRC-QCP",
+                                            "audio/EVRC0",
+                                            "audio/EVRC1",
+                                            "audio/EVRCB",
+                                            "audio/EVRCB0",
+                                            "audio/EVRCB1",
+                                            "audio/EVRCNW",
+                                            "audio/EVRCNW0",
+                                            "audio/EVRCNW1",
+                                            "audio/EVRCWB",
+                                            "audio/EVRCWB0",
+                                            "audio/EVRCWB1",
+                                            "audio/EVS",
+                                            "audio/example",
+                                            "audio/flexfec",
+                                            "audio/fwdred",
+                                            "audio/G711-0",
+                                            "audio/G719",
+                                            "audio/G7221",
+                                            "audio/G722",
+                                            "audio/G723",
+                                            "audio/G726-16",
+                                            "audio/G726-24",
+                                            "audio/G726-32",
+                                            "audio/G726-40",
+                                            "audio/G728",
+                                            "audio/G729",
+                                            "audio/G7291",
+                                            "audio/G729D",
+                                            "audio/G729E",
+                                            "audio/GSM",
+                                            "audio/GSM-EFR",
+                                            "audio/GSM-HR-08",
+                                            "audio/iLBC",
+                                            "audio/ip-mr_v2.5",
+                                            "audio/L8",
+                                            "audio/L16",
+                                            "audio/L20",
+                                            "audio/L24",
+                                            "audio/LPC",
+                                            "audio/MELP",
+                                            "audio/MELP600",
+                                            "audio/MELP1200",
+                                            "audio/MELP2400",
+                                            "audio/mhas",
+                                            "audio/mobile-xmf",
+                                            "audio/MPA",
+                                            "audio/mp4",
+                                            "audio/MP4A-LATM",
+                                            "audio/mpa-robust",
+                                            "audio/mpeg",
+                                            "audio/mpeg4-generic",
+                                            "audio/ogg",
+                                            "audio/opus",
+                                            "audio/parityfec",
+                                            "audio/PCMA",
+                                            "audio/PCMA-WB",
+                                            "audio/PCMU",
+                                            "audio/PCMU-WB",
+                                            "audio/prs.sid",
+                                            "audio/raptorfec",
+                                            "audio/RED",
+                                            "audio/rtp-enc-aescm128",
+                                            "audio/rtploopback",
+                                            "audio/rtp-midi",
+                                            "audio/rtx",
+                                            "audio/scip",
+                                            "audio/SMV",
+                                            "audio/SMV0",
+                                            "audio/SMV-QCP",
+                                            "audio/sofa",
+                                            "audio/sp-midi",
+                                            "audio/speex",
+                                            "audio/t140c",
+                                            "audio/t38",
+                                            "audio/telephone-event",
+                                            "audio/TETRA_ACELP",
+                                            "audio/TETRA_ACELP_BB",
+                                            "audio/tone",
+                                            "audio/TSVCIS",
+                                            "audio/UEMCLIP",
+                                            "audio/ulpfec",
+                                            "audio/usac",
+                                            "audio/VDVI",
+                                            "audio/VMR-WB",
+                                            "audio/vnd.3gpp.iufp",
+                                            "audio/vnd.4SB",
+                                            "audio/vnd.audiokoz",
+                                            "audio/vnd.CELP",
+                                            "audio/vnd.cisco.nse",
+                                            "audio/vnd.cmles.radio-events",
+                                            "audio/vnd.cns.anp1",
+                                            "audio/vnd.cns.inf1",
+                                            "audio/vnd.dece.audio",
+                                            "audio/vnd.digital-winds",
+                                            "audio/vnd.dlna.adts",
+                                            "audio/vnd.dolby.heaac.1",
+                                            "audio/vnd.dolby.heaac.2",
+                                            "audio/vnd.dolby.mlp",
+                                            "audio/vnd.dolby.mps",
+                                            "audio/vnd.dolby.pl2",
+                                            "audio/vnd.dolby.pl2x",
+                                            "audio/vnd.dolby.pl2z",
+                                            "audio/vnd.dolby.pulse.1",
+                                            "audio/vnd.dra",
+                                            "audio/vnd.dts",
+                                            "audio/vnd.dts.hd",
+                                            "audio/vnd.dts.uhd",
+                                            "audio/vnd.dvb.file",
+                                            "audio/vnd.everad.plj",
+                                            "audio/vnd.hns.audio",
+                                            "audio/vnd.lucent.voice",
+                                            "audio/vnd.ms-playready.media.pya",
+                                            "audio/vnd.nokia.mobile-xmf",
+                                            "audio/vnd.nortel.vbk",
+                                            "audio/vnd.nuera.ecelp4800",
+                                            "audio/vnd.nuera.ecelp7470",
+                                            "audio/vnd.nuera.ecelp9600",
+                                            "audio/vnd.octel.sbc",
+                                            "audio/vnd.presonus.multitrack",
+                                            "audio/vnd.qcelp",
+                                            "audio/vnd.rhetorex.32kadpcm",
+                                            "audio/vnd.rip",
+                                            "audio/vnd.sealedmedia.softseal.mpeg",
+                                            "audio/vnd.vmx.cvsd",
+                                            "audio/vorbis",
+                                            "audio/vorbis-config"
+                                        ]
+                                    }
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "body": "IPFS audio streaming is forbidden",
+                                    "close": true,
+                                    "handler": "static_response",
+                                    "status_code": 403
+                                }
+                            ]
+                        },
+                        {
+                            "match": [
+                                {
+                                    "expression": " \n\t{http.response.header.Content-Type} == \"audio/1d-interleaved-parityfec\" || \n\t{http.response.header.Content-Type} == \"audio/32kadpcm\" || \n\t{http.response.header.Content-Type} == \"audio/3gpp\" || \n\t{http.response.header.Content-Type} == \"audio/3gpp2\" || \n\t{http.response.header.Content-Type} == \"audio/aac\" || \n\t{http.response.header.Content-Type} == \"audio/ac3\" || \n\t{http.response.header.Content-Type} == \"audio/AMR\" || \n\t{http.response.header.Content-Type} == \"audio/AMR-WB\" || \n\t{http.response.header.Content-Type} == \"audio/amr-wb+\" || \n\t{http.response.header.Content-Type} == \"audio/aptx\" || \n\t{http.response.header.Content-Type} == \"audio/asc\" || \n\t{http.response.header.Content-Type} == \"audio/ATRAC-ADVANCED-LOSSLESS\" || \n\t{http.response.header.Content-Type} == \"audio/ATRAC-X\" || \n\t{http.response.header.Content-Type} == \"audio/ATRAC3\" || \n\t{http.response.header.Content-Type} == \"audio/basic\" || \n\t{http.response.header.Content-Type} == \"audio/BV16\" || \n\t{http.response.header.Content-Type} == \"audio/BV32\" || \n\t{http.response.header.Content-Type} == \"audio/clearmode\" || \n\t{http.response.header.Content-Type} == \"audio/CN\" || \n\t{http.response.header.Content-Type} == \"audio/DAT12\" || \n\t{http.response.header.Content-Type} == \"audio/dls\" || \n\t{http.response.header.Content-Type} == \"audio/dsr-es201108\" || \n\t{http.response.header.Content-Type} == \"audio/dsr-es202050\" || \n\t{http.response.header.Content-Type} == \"audio/dsr-es202211\" || \n\t{http.response.header.Content-Type} == \"audio/dsr-es202212\" || \n\t{http.response.header.Content-Type} == \"audio/DV\" || \n\t{http.response.header.Content-Type} == \"audio/DVI4\" || \n\t{http.response.header.Content-Type} == \"audio/eac3\" || \n\t{http.response.header.Content-Type} == \"audio/encaprtp\" || \n\t{http.response.header.Content-Type} == \"audio/EVRC\" || \n\t{http.response.header.Content-Type} == \"audio/EVRC-QCP\" || \n\t{http.response.header.Content-Type} == \"audio/EVRC0\" || \n\t{http.response.header.Content-Type} == \"audio/EVRC1\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCB\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCB0\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCB1\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCNW\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCNW0\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCNW1\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCWB\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCWB0\" || \n\t{http.response.header.Content-Type} == \"audio/EVRCWB1\" || \n\t{http.response.header.Content-Type} == \"audio/EVS\" || \n\t{http.response.header.Content-Type} == \"audio/example\" || \n\t{http.response.header.Content-Type} == \"audio/flexfec\" || \n\t{http.response.header.Content-Type} == \"audio/fwdred\" || \n\t{http.response.header.Content-Type} == \"audio/G711-0\" || \n\t{http.response.header.Content-Type} == \"audio/G719\" || \n\t{http.response.header.Content-Type} == \"audio/G7221\" || \n\t{http.response.header.Content-Type} == \"audio/G722\" || \n\t{http.response.header.Content-Type} == \"audio/G723\" || \n\t{http.response.header.Content-Type} == \"audio/G726-16\" || \n\t{http.response.header.Content-Type} == \"audio/G726-24\" || \n\t{http.response.header.Content-Type} == \"audio/G726-32\" || \n\t{http.response.header.Content-Type} == \"audio/G726-40\" || \n\t{http.response.header.Content-Type} == \"audio/G728\" || \n\t{http.response.header.Content-Type} == \"audio/G729\" || \n\t{http.response.header.Content-Type} == \"audio/G7291\" || \n\t{http.response.header.Content-Type} == \"audio/G729D\" || \n\t{http.response.header.Content-Type} == \"audio/G729E\" || \n\t{http.response.header.Content-Type} == \"audio/GSM\" || \n\t{http.response.header.Content-Type} == \"audio/GSM-EFR\" || \n\t{http.response.header.Content-Type} == \"audio/GSM-HR-08\" || \n\t{http.response.header.Content-Type} == \"audio/iLBC\" || \n\t{http.response.header.Content-Type} == \"audio/ip-mr_v2.5\" || \n\t{http.response.header.Content-Type} == \"audio/L8\" || \n\t{http.response.header.Content-Type} == \"audio/L16\" || \n\t{http.response.header.Content-Type} == \"audio/L20\" || \n\t{http.response.header.Content-Type} == \"audio/L24\" || \n\t{http.response.header.Content-Type} == \"audio/LPC\" || \n\t{http.response.header.Content-Type} == \"audio/MELP\" || \n\t{http.response.header.Content-Type} == \"audio/MELP600\" || \n\t{http.response.header.Content-Type} == \"audio/MELP1200\" || \n\t{http.response.header.Content-Type} == \"audio/MELP2400\" || \n\t{http.response.header.Content-Type} == \"audio/mhas\" || \n\t{http.response.header.Content-Type} == \"audio/mobile-xmf\" || \n\t{http.response.header.Content-Type} == \"audio/MPA\" || \n\t{http.response.header.Content-Type} == \"audio/mp4\" || \n\t{http.response.header.Content-Type} == \"audio/MP4A-LATM\" || \n\t{http.response.header.Content-Type} == \"audio/mpa-robust\" || \n\t{http.response.header.Content-Type} == \"audio/mpeg\" || \n\t{http.response.header.Content-Type} == \"audio/mpeg4-generic\" || \n\t{http.response.header.Content-Type} == \"audio/ogg\" || \n\t{http.response.header.Content-Type} == \"audio/opus\" || \n\t{http.response.header.Content-Type} == \"audio/parityfec\" || \n\t{http.response.header.Content-Type} == \"audio/PCMA\" || \n\t{http.response.header.Content-Type} == \"audio/PCMA-WB\" || \n\t{http.response.header.Content-Type} == \"audio/PCMU\" || \n\t{http.response.header.Content-Type} == \"audio/PCMU-WB\" || \n\t{http.response.header.Content-Type} == \"audio/prs.sid\" || \n\t{http.response.header.Content-Type} == \"audio/raptorfec\" || \n\t{http.response.header.Content-Type} == \"audio/RED\" || \n\t{http.response.header.Content-Type} == \"audio/rtp-enc-aescm128\" || \n\t{http.response.header.Content-Type} == \"audio/rtploopback\" || \n\t{http.response.header.Content-Type} == \"audio/rtp-midi\" || \n\t{http.response.header.Content-Type} == \"audio/rtx\" || \n\t{http.response.header.Content-Type} == \"audio/scip\" || \n\t{http.response.header.Content-Type} == \"audio/SMV\" || \n\t{http.response.header.Content-Type} == \"audio/SMV0\" || \n\t{http.response.header.Content-Type} == \"audio/SMV-QCP\" || \n\t{http.response.header.Content-Type} == \"audio/sofa\" || \n\t{http.response.header.Content-Type} == \"audio/sp-midi\" || \n\t{http.response.header.Content-Type} == \"audio/speex\" || \n\t{http.response.header.Content-Type} == \"audio/t140c\" || \n\t{http.response.header.Content-Type} == \"audio/t38\" || \n\t{http.response.header.Content-Type} == \"audio/telephone-event\" || \n\t{http.response.header.Content-Type} == \"audio/TETRA_ACELP\" || \n\t{http.response.header.Content-Type} == \"audio/TETRA_ACELP_BB\" || \n\t{http.response.header.Content-Type} == \"audio/tone\" || \n\t{http.response.header.Content-Type} == \"audio/TSVCIS\" || \n\t{http.response.header.Content-Type} == \"audio/UEMCLIP\" || \n\t{http.response.header.Content-Type} == \"audio/ulpfec\" || \n\t{http.response.header.Content-Type} == \"audio/usac\" || \n\t{http.response.header.Content-Type} == \"audio/VDVI\" || \n\t{http.response.header.Content-Type} == \"audio/VMR-WB\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.3gpp.iufp\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.4SB\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.audiokoz\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.CELP\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.cisco.nse\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.cmles.radio-events\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.cns.anp1\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.cns.inf1\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dece.audio\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.digital-winds\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dlna.adts\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dolby.heaac.1\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dolby.heaac.2\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dolby.mlp\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dolby.mps\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dolby.pl2\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dolby.pl2x\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dolby.pl2z\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dolby.pulse.1\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dra\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dts\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dts.hd\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dts.uhd\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.dvb.file\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.everad.plj\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.hns.audio\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.lucent.voice\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.ms-playready.media.pya\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.nokia.mobile-xmf\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.nortel.vbk\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.nuera.ecelp4800\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.nuera.ecelp7470\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.nuera.ecelp9600\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.octel.sbc\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.presonus.multitrack\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.qcelp\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.rhetorex.32kadpcm\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.rip\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.sealedmedia.softseal.mpeg\" || \n\t{http.response.header.Content-Type} == \"audio/vnd.vmx.cvsd\" || \n\t{http.response.header.Content-Type} == \"audio/vorbis\" || \n\t{http.response.header.Content-Type} == \"audio/vorbis-config\"\n\n\t"
+                                }
+                            ],
+                            "handle": [
+                                {
+                                    "body": "IPFS audio streaming is forbidden",
+                                    "close": true,
+                                    "handler": "static_response",
+                                    "status_code": 403
+                                }
+                            ]
+                        },
+                        {
+                            "handle": [
+                                {
+                                    "handler": "reverse_proxy",
+                                    "transport": {
+                                        "protocol": "http"
+                                    },
+                                    "headers": {
+                                        "request": {
+                                            "replace": {
+                                                "Host": [
+                                                    {
+                                                        "replace": "$1",
+                                                        "search_regexp": "([-a-z0-9]+\\.eth)\\.limo"
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "response": {
+                                            "delete": [
+                                                "Access-Control-Allow-Origin"
+                                            ]
+                                        }
+                                    },
+                                    "upstreams": [
+                                        {
+                                            "dial": "${IPFS_BACKEND}:80"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "logs": {
+                        "default_logger_name": "log0"
+                    }
+                }
+            }
+        }
+    }
+}
