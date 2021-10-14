@@ -1,9 +1,8 @@
 # Cost: $20.00/month
-/*
 resource "digitalocean_kubernetes_cluster" "limo" {
-  name          = "eth_limo"
+  name          = "eth-limo"
   region        = "nyc1"
-  version       = "1.21.2-do.2"
+  version       = "1.21.3-do.0"
   vpc_uuid      = digitalocean_vpc.limo.id
   auto_upgrade  = true
   surge_upgrade = true

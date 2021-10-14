@@ -26,12 +26,9 @@
         "module": "s3",
         "host": "nyc3.digitaloceanspaces.com",
         "bucket": "eth-limo-certificates",
-        "access_key": "${SPACES_ACCESS_KEY}",
+        "access_id": "${SPACES_ACCESS_KEY}",
         "secret_key": "${SPACES_SECRET_KEY}",
-        "prefix": "limo",
-        "redis_address": "${REDIS_HOST}:6379",
-        "redis_password": "",
-        "redis_db": 0
+        "prefix": "x509"
     },
     "apps": {
         "tls": {
@@ -57,7 +54,9 @@
                                             "name": "digitalocean",
                                             "auth_token": "${DO_TOKEN}"
                                         },
-                                        "resolvers": ["208.67.222.222"],
+                                        "resolvers": [
+                                            "208.67.222.222"
+                                        ],
                                         "ttl": "300s",
                                         "propagation_timeout": "900s"
                                     }
@@ -77,6 +76,9 @@
                     "listen": [
                         ":8080"
                     ],
+                    "automatic_https": {
+                        "disable_redirects": true
+                    },
                     "routes": [
                         {
                             "handle": [
@@ -84,10 +86,20 @@
                                     "handler": "static_response",
                                     "headers": {
                                         "Location": [
-                                            "https://{http.request.host}{http.request.uri}"
+                                            "https://{http.request.host}:443{http.request.uri}"
                                         ]
                                     },
-                                    "status_code": 302
+                                    "status_code": 308
+                                },
+                                {
+                                    "handler": "headers",
+                                    "response": {
+                                        "set": {
+                                            "Server": [
+                                                "eth.limo"
+                                            ]
+                                        }
+                                    }
                                 }
                             ]
                         }
@@ -97,6 +109,9 @@
                     "listen": [
                         ":8443"
                     ],
+                    "automatic_https": {
+                        "disable_redirects": true
+                    },
                     "tls_connection_policies": [
                         {
                             "cipher_suites": [
@@ -231,7 +246,7 @@
                                                 "same-origin"
                                             ],
                                             "Permissions-Policy": [
-                                                "camera=(), geolocation=(), microphone=(), payment=(), speaker=(), usb=(), battery=()"
+                                                "geolocation=(), microphone=(), speaker=(), usb=(), battery=()"
                                             ],
                                             "Referrer-Policy": [
                                                 "strict-origin-when-cross-origin"

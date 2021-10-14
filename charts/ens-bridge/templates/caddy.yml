@@ -195,7 +195,7 @@ metadata:
     service.beta.kubernetes.io/do-loadbalancer-algorithm: "least_connection"
     service.beta.kubernetes.io/do-loadbalancer-tag: {{ .Values.caddy.name}}
     service.beta.kubernetes.io/do-loadbalancer-size-slug: "lb-small"
-    external-dns.alpha.kubernetes.io/hostname: "*.eth.limo"
+    #external-dns.alpha.kubernetes.io/hostname: "*.eth.limo"
   {{- end }}
 spec:
   {{- if .Values.local }}
