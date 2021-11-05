@@ -28,7 +28,7 @@ caddy:
       tag: "3.14.1"
   image:
     repository: ghcr.io/eth-limo/eth.limo/caddy
-    tag: "v2.4.3-static-5"
+    tag: "v2.4.5-static"
   securityContext:
     runAsUser: 10001
     runAsGroup: 10001
@@ -155,7 +155,7 @@ redis:
 
 ipfs:
   name: ipfs-cluster
-  replicaCount: 1
+  replicaCount: 2
   gateway:
     name: ipfs-gateway
     image:

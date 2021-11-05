@@ -1,7 +1,7 @@
 # Build stage
 FROM golang:1.16 as builder
 
-ARG CADDY_VERSION=v2.4.3
+ARG CADDY_VERSION=v2.4.5
 
 ENV CGO_ENABLED=0 GOOS=linux
 
@@ -33,7 +33,7 @@ RUN ls -altR /var/www/public_html
 
 FROM scratch as runtime
 
-LABEL org.opencontainers.image.source https://github.com/eth-limo/eth.limo
+LABEL org.opencontainers.image.source=https://github.com/eth-limo/eth.limo
 
 COPY --from=builder /etc/nsswitch.conf /etc/nsswitch.conf
 COPY --from=builder /etc/mime.types /etc/mime.types
