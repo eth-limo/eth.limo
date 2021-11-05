@@ -2,11 +2,19 @@ resource "digitalocean_domain" "limo" {
   name = "eth.limo"
 }
 
+resource "digitalocean_domain" "show" {
+  name = "eth.show"
+}
+
+resource "digitalocean_domain" "frl" {
+  name = "eth.frl"
+}
+
 resource "digitalocean_record" "default" {
   domain = digitalocean_domain.limo.name
   type   = "A"
   name   = "@"
-  value  = "174.138.125.8"
+  value  = var.limo-lb
   ttl    = 300
 }
 
@@ -14,7 +22,23 @@ resource "digitalocean_record" "wildcard" {
   domain = digitalocean_domain.limo.name
   type   = "A"
   name   = "*"
-  value  = "174.138.125.8"
+  value  = var.limo-lb
+  ttl    = 300
+}
+
+resource "digitalocean_record" "wildcard-show" {
+  domain = digitalocean_domain.show.name
+  type   = "A"
+  name   = "*"
+  value  = var.limo-lb
+  ttl    = 300
+}
+
+resource "digitalocean_record" "wildcard-frl" {
+  domain = digitalocean_domain.frl.name
+  type   = "A"
+  name   = "*"
+  value  = var.limo-lb
   ttl    = 300
 }
 

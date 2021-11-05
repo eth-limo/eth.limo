@@ -71,6 +71,11 @@ spec:
 {{ toYaml .Values.coredns.ports | indent 12 }}
           command: ["./coredns", "-conf", "/etc/coredns/Corefile"]
           env:
+            - name: "RPC_ENDPOINT"
+              valueFrom:
+                secretKeyRef:
+                  name: pokt
+                  key: rpc
             {{- if .Values.coredns.env -}}
             {{- range .Values.coredns.env }}
             - name: {{ .name }}
