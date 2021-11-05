@@ -35,7 +35,17 @@
             "certificates": {
                 "automate": [
                     "*.eth.limo",
-                    "eth.limo"
+                    "eth.limo",
+                    "*.eth.show",
+                    "*.eth.frl",
+                    "*.tkr.eth.limo",
+                    "*.tkn.eth.limo",
+                    "*.ethereum.eth.limo",
+                    "*.wizardao.eth.limo",
+                    "*.os.eth.limo",
+                    "*.ethos.eth.limo",
+                    "*.ih0dl.eth.limo",
+                    "*.imbue.eth.limo"
                 ]
             },
             "automation": {
@@ -43,7 +53,17 @@
                     {
                         "subjects": [
                             "*.eth.limo",
-                            "eth.limo"
+                            "eth.limo",
+                            "*.eth.show",
+                            "*.eth.frl",
+                            "*.tkr.eth.limo",
+                            "*.tkn.eth.limo",
+                            "*.ethereum.eth.limo",
+                            "*.wizardao.eth.limo",
+                            "*.os.eth.limo",
+                            "*.ethos.eth.limo",
+                            "*.ih0dl.eth.limo",
+                            "*.imbue.eth.limo"
                         ],
                         "issuers": [
                             {
@@ -218,7 +238,17 @@
                             "match": [
                                 {
                                     "host": [
-                                        "*.eth.limo"
+                                        "*.eth.limo",
+                                        "*.eth.show",
+                                        "*.eth.frl",
+                                        "*.tkr.eth.limo",
+                                        "*.tkn.eth.limo",
+                                        "*.ethereum.eth.limo",
+                                        "*.wizardao.eth.limo",
+                                        "*.os.eth.limo",
+                                        "*.ethos.eth.limo",
+                                        "*.ih0dl.eth.limo",
+                                        "*.imbue.eth.limo"
                                     ]
                                 }
                             ],
@@ -237,13 +267,13 @@
                                                 "false"
                                             ],
                                             "Access-Control-Allow-Origin": [
-                                                "{http.request.host}"
+                                                "*"
                                             ],
                                             "Cache-Control": [
                                                 "max-age=300, must-revalidate"
                                             ],
                                             "Cross-Origin-Resource-Policy": [
-                                                "same-origin"
+                                                "cross-origin"
                                             ],
                                             "Permissions-Policy": [
                                                 "geolocation=(), microphone=(), speaker=(), usb=(), battery=()"

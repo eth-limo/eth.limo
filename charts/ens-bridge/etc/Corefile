@@ -5,7 +5,8 @@ https://eth:8443 {
 
     ens {
         #connection http://{$GETH_NODE}
-        connection https://mainnet.infura.io/v3/38966af1cdf94fd0828d32e0d7bd29df
+        #connection https://mainnet.infura.io/v3/38966af1cdf94fd0828d32e0d7bd29df
+        connection {$RPC_ENDPOINT}
         ethlinknameservers 127.0.0.1
         ipfsgatewaya {$IPFS_BACKEND}:80
         }
@@ -28,7 +29,8 @@ eth.link:8853 {
 
     ens {
         #connection http://{$GETH_NODE}
-        connection https://mainnet.infura.io/v3/38966af1cdf94fd0828d32e0d7bd29df
+        #connection https://mainnet.infura.io/v3/38966af1cdf94fd0828d32e0d7bd29df
+        connection {$RPC_ENDPOINT}
         ethlinknameservers 127.0.0.1
         ipfsgatewaya {$IPFS_BACKEND}:80
     }
@@ -46,7 +48,8 @@ eth.link:8853 {
 eth:8853 {
     ens {
         #connection http://{$GETH_NODE}
-        connection https://mainnet.infura.io/v3/38966af1cdf94fd0828d32e0d7bd29df
+        #connection https://mainnet.infura.io/v3/38966af1cdf94fd0828d32e0d7bd29df
+        connection {$RPC_ENDPOINT}
         ethlinknameservers 127.0.0.1
         ipfsgatewaya {$IPFS_BACKEND}:80
     }
