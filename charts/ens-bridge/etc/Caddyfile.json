@@ -45,7 +45,9 @@
                     "*.os.eth.limo",
                     "*.ethos.eth.limo",
                     "*.ih0dl.eth.limo",
-                    "*.imbue.eth.limo"
+                    "*.imbue.eth.limo",
+                    "*.omen.eth.limo",
+                    "*.ens.eth.limo"
                 ]
             },
             "automation": {
@@ -63,7 +65,9 @@
                             "*.os.eth.limo",
                             "*.ethos.eth.limo",
                             "*.ih0dl.eth.limo",
-                            "*.imbue.eth.limo"
+                            "*.imbue.eth.limo",
+                            "*.omen.eth.limo",
+                            "*.ens.eth.limo"
                         ],
                         "issuers": [
                             {
@@ -248,7 +252,9 @@
                                         "*.os.eth.limo",
                                         "*.ethos.eth.limo",
                                         "*.ih0dl.eth.limo",
-                                        "*.imbue.eth.limo"
+                                        "*.imbue.eth.limo",
+                                        "*.omen.eth.limo",
+                                        "*.ens.eth.limo"
                                     ]
                                 }
                             ],
@@ -400,21 +406,6 @@
                             "handle": [
                                 {
                                     "body": "IPFS audio streaming is forbidden",
-                                    "close": true,
-                                    "handler": "static_response",
-                                    "status_code": 403
-                                }
-                            ]
-                        },
-                        {
-                            "match": [
-                                {
-                                    "expression": "\n\t( \n\t{http.request.orig_uri.path.file}.endsWith(\".apng\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".png\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".avif\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".jpg\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".jpeg\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".jfif\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".pjpeg\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".pjp\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".gif\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".svg\") || \n\t{http.request.orig_uri.path.file}.endsWith(\".webp\")\n\t) \u0026\u0026\n\t! {http.request.header.Referer}.contains(\".eth.limo\")\n\t\u0026\u0026\n\t{http.request.header.Referer} != \"\"\n\n\n\t"
-                                }
-                            ],
-                            "handle": [
-                                {
-                                    "body": "Hotlinking is forbidden",
                                     "close": true,
                                     "handler": "static_response",
                                     "status_code": 403
