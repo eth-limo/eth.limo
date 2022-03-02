@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build image
         id: build_image
         run: docker build --rm -f Dockerfile.caddy -t caddy:${{ github.sha }} .
