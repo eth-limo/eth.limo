@@ -15,7 +15,7 @@ jobs:
         run: docker build --rm -f Dockerfile.caddy -t caddy:${{ github.sha }} .
       - name: hadolint
         id: hadolint
-        uses: hadolint/hadolint-action@v1.6.0
+        uses: hadolint/hadolint-action@v2.1.0
         with:
           dockerfile: ./Dockerfile.caddy
           failure-threshold: warning
