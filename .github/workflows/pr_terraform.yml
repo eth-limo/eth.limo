@@ -47,7 +47,7 @@ jobs:
         working-directory: terraform
     steps:
       - uses: actions/checkout@v2
-      - uses: hashicorp/setup-terraform@v1
+      - uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.0.3
       - run: ls
