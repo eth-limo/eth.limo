@@ -13,7 +13,7 @@ jobs:
         working-directory: terraform
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.1.0
       - name: Terraform security scan
         uses: triat/terraform-security-scan@master
         env:
@@ -27,7 +27,7 @@ jobs:
         working-directory: terraform
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.1.0
       - name: Run Checkov scan
         id: checkov
         uses: bridgecrewio/checkov-action@master
@@ -46,7 +46,7 @@ jobs:
       run:
         working-directory: terraform
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.1.0
       - uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: 1.0.3
